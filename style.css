@@ -1,871 +1,1149 @@
-/* ============================================
-   GLOBAL
-============================================ */
+// ============================================================
+// SUPABASE
+// ============================================================
 
-* {
-    box-sizing: border-box;
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
+
+
+// ============================================================
+// VARIABLES
+// ============================================================
+
+let documents = [];
+let signatoryList = [];
+let editingDocumentId = null;
+
+
+// ============================================================
+// START
+// ============================================================
+
+document.addEventListener("DOMContentLoaded", async () => {
+
+    resetSignatories();
+
+    await loadDocuments();
+
+});
+
+
+// ============================================================
+// ADD DOCUMENT MODAL
+// ============================================================
+
+function openAddModal() {
+
+    editingDocumentId = null;
+
+    document.getElementById("modalTitle").textContent =
+        "Add Document";
+
+    document.getElementById("saveButton").textContent =
+        "Save Document";
+
+    clearForm();
+
+    document.getElementById("modal").classList.add("show");
 }
 
 
-body {
+// ============================================================
+// CLOSE
+// ============================================================
 
-    margin: 0;
+function closeModal() {
 
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-
-    background: #f3f6f9;
-
-    color: #172b3a;
-
-}
-
-
-/* ============================================
-   HEADER
-============================================ */
-
-header {
-
-    background: white;
-
-    padding:
-        30px 5%;
-
-    border-bottom:
-        1px solid #e5e5e5;
-
-}
-
-
-header h1 {
-
-    margin: 0;
-
-    font-size: 30px;
-
-    color: #172b3a;
-
-}
-
-
-/* ============================================
-   MAIN
-============================================ */
-
-main {
-
-    padding:
-        30px 4%;
-
-}
-
-
-/* ============================================
-   STATISTICS
-============================================ */
-
-.stats {
-
-    display: grid;
-
-    grid-template-columns:
-        repeat(4, 1fr);
-
-    gap: 20px;
-
-    margin-bottom: 30px;
+    document.getElementById("modal")
+        .classList.remove("show");
 
 }
 
 
-.card {
+// ============================================================
+// RESET SIGNATORIES
+// ============================================================
 
-    background: white;
+function resetSignatories() {
 
-    border-radius: 14px;
+    signatoryList = [
+        {
+            name: "",
+            signed: false,
+            signedAt: "",
+            receivedBy: "",
+            receivedAt: ""
+        }
+    ];
 
-    padding: 25px;
+    renderSignatories();
+}
 
-    box-shadow:
-        0 3px 10px
-        rgba(0, 0, 0, 0.08);
+
+// ============================================================
+// ADD SIGNATORY
+// ============================================================
+
+function addSignatory() {
+
+    signatoryList.push({
+        name: "",
+        signed: false,
+        signedAt: "",
+        receivedBy: "",
+        receivedAt: ""
+    });
+
+    renderSignatories();
+}
+
+
+// ============================================================
+// REMOVE SIGNATORY
+// ============================================================
+
+function removeSignatory(index) {
+
+    if (signatoryList.length === 1) {
+
+        alert("At least one signatory is required.");
+
+        return;
+    }
+
+    signatoryList.splice(index, 1);
+
+    renderSignatories();
+}
+
+
+// ============================================================
+// RENDER SIGNATORIES
+// ============================================================
+
+function renderSignatories() {
+
+    const container =
+        document.getElementById("signatoryContainer");
+
+    container.innerHTML = "";
+
+    signatoryList.forEach((person, index) => {
+
+        const row = document.createElement("div");
+
+        row.className = "signatory";
+
+        row.innerHTML = `
+
+            <div class="signatory-number">
+                ${index + 1}
+            </div>
+
+            <input
+                type="text"
+                placeholder="Signatory name"
+                value="${escapeHTML(person.name)}"
+                onchange="updatePerson(${index}, 'name', this.value)"
+            >
+
+            <input
+                type="datetime-local"
+                value="${toDateTimeLocal(person.signedAt)}"
+                onchange="updatePerson(${index}, 'signedAt', this.value)"
+            >
+
+            <input
+                type="text"
+                placeholder="Received by"
+                value="${escapeHTML(person.receivedBy)}"
+                onchange="updatePerson(${index}, 'receivedBy', this.value)"
+            >
+
+            <input
+                type="datetime-local"
+                value="${toDateTimeLocal(person.receivedAt)}"
+                onchange="updatePerson(${index}, 'receivedAt', this.value)"
+            >
+
+            <label class="signed-box">
+
+                <input
+                    type="checkbox"
+                    ${person.signed ? "checked" : ""}
+                    onchange="toggleSigned(${index}, this.checked)"
+                >
+
+                Signed
+
+            </label>
+
+            <button
+                type="button"
+                class="remove-signatory"
+                onclick="removeSignatory(${index})"
+            >
+                ×
+            </button>
+        `;
+
+        container.appendChild(row);
+
+    });
+}
+
+
+// ============================================================
+// UPDATE SIGNATORY
+// ============================================================
+
+function updatePerson(index, field, value) {
+
+    signatoryList[index][field] = value;
 
 }
 
 
-.card span {
+// ============================================================
+// SIGNED
+// ============================================================
 
-    display: block;
+function toggleSigned(index, checked) {
 
-    color: #666;
+    signatoryList[index].signed = checked;
 
-    font-size: 18px;
+    if (checked) {
 
+        if (!signatoryList[index].signedAt) {
+
+            signatoryList[index].signedAt =
+                new Date().toISOString();
+
+        }
+
+    } else {
+
+        signatoryList[index].signedAt = "";
+
+    }
+
+    renderSignatories();
 }
 
 
-.card strong {
+// ============================================================
+// SAVE DOCUMENT
+// ============================================================
 
-    display: block;
+async function saveDocument() {
 
-    margin-top: 10px;
+    const saveButton =
+        document.getElementById("saveButton");
 
-    font-size: 40px;
+    try {
 
-    color: #172b3a;
+        // ----------------------------------------------------
+        // GET VALUES
+        // ----------------------------------------------------
 
+        const documentDate =
+            document.getElementById("documentDate").value;
+
+        const documentName =
+            document.getElementById("documentName").value.trim();
+
+        const schoolYear =
+            document.getElementById("schoolYear").value.trim();
+
+        const semester =
+            document.getElementById("semester").value;
+
+        const trustedBy =
+            document.getElementById("trustedBy").value.trim();
+
+
+        // ----------------------------------------------------
+        // VALIDATION
+        // ----------------------------------------------------
+
+        if (!documentDate) {
+
+            alert("Please select the document date.");
+
+            return;
+        }
+
+        if (!documentName) {
+
+            alert("Please enter the document name.");
+
+            return;
+        }
+
+        if (!schoolYear) {
+
+            alert("Please enter the school year.");
+
+            return;
+        }
+
+        if (!semester) {
+
+            alert("Please select the semester.");
+
+            return;
+        }
+
+
+        if (signatoryList.length === 0) {
+
+            alert("Please add at least one signatory.");
+
+            return;
+        }
+
+
+        for (const person of signatoryList) {
+
+            if (!person.name.trim()) {
+
+                alert("Please enter all signatory names.");
+
+                return;
+            }
+        }
+
+
+        // ----------------------------------------------------
+        // BUTTON
+        // ----------------------------------------------------
+
+        saveButton.disabled = true;
+
+        saveButton.textContent = "Saving...";
+
+
+        // ====================================================
+        // EDIT
+        // ====================================================
+
+        if (editingDocumentId) {
+
+            const { error: updateError } =
+                await supabaseClient
+                    .from("documents")
+                    .update({
+                        document_date: documentDate,
+                        document_name: documentName,
+                        school_year: schoolYear,
+                        semester: semester,
+                        trusted_by: trustedBy
+                    })
+                    .eq("id", editingDocumentId);
+
+
+            if (updateError) {
+
+                throw new Error(
+                    "Document update failed: " +
+                    updateError.message
+                );
+            }
+
+
+            const { error: deleteError } =
+                await supabaseClient
+                    .from("signatories")
+                    .delete()
+                    .eq("document_id", editingDocumentId);
+
+
+            if (deleteError) {
+
+                throw new Error(
+                    "Old signatories could not be removed: " +
+                    deleteError.message
+                );
+            }
+
+
+            const signatories =
+                createSignatoryRows(editingDocumentId);
+
+
+            const { error: insertSignatoryError } =
+                await supabaseClient
+                    .from("signatories")
+                    .insert(signatories);
+
+
+            if (insertSignatoryError) {
+
+                throw new Error(
+                    "Signatories could not be saved: " +
+                    insertSignatoryError.message
+                );
+            }
+
+
+            alert("Document updated successfully.");
+
+        }
+
+
+        // ====================================================
+        // NEW DOCUMENT
+        // ====================================================
+
+        else {
+
+            console.log("Saving document...");
+
+
+            const { data, error } =
+                await supabaseClient
+                    .from("documents")
+                    .insert({
+                        document_date: documentDate,
+                        document_name: documentName,
+                        school_year: schoolYear,
+                        semester: semester,
+                        trusted_by: trustedBy
+                    })
+                    .select()
+                    .single();
+
+
+            console.log("Supabase response:", data, error);
+
+
+            if (error) {
+
+                throw new Error(
+                    "Document could not be saved:\n" +
+                    error.message
+                );
+            }
+
+
+            if (!data) {
+
+                throw new Error(
+                    "Supabase did not return the new document."
+                );
+            }
+
+
+            // ------------------------------------------------
+            // SAVE SIGNATORIES
+            // ------------------------------------------------
+
+            const signatories =
+                createSignatoryRows(data.id);
+
+
+            const { error: signatoryError } =
+                await supabaseClient
+                    .from("signatories")
+                    .insert(signatories);
+
+
+            if (signatoryError) {
+
+                // Remove document if signatories failed
+                await supabaseClient
+                    .from("documents")
+                    .delete()
+                    .eq("id", data.id);
+
+                throw new Error(
+                    "Signatories could not be saved:\n" +
+                    signatoryError.message
+                );
+            }
+
+
+            alert("Document saved successfully.");
+
+        }
+
+
+        // ----------------------------------------------------
+        // REFRESH
+        // ----------------------------------------------------
+
+        closeModal();
+
+        clearForm();
+
+        await loadDocuments();
+
+    }
+
+    catch (error) {
+
+        console.error("SAVE ERROR:", error);
+
+        alert(
+            "SAVE FAILED\n\n" +
+            error.message
+        );
+
+    }
+
+    finally {
+
+        saveButton.disabled = false;
+
+        saveButton.textContent =
+            editingDocumentId
+                ? "Update Document"
+                : "Save Document";
+
+    }
 }
 
 
-/* ============================================
-   MONITORING
-============================================ */
+// ============================================================
+// CREATE SIGNATORY ROWS
+// ============================================================
 
-.monitoring {
+function createSignatoryRows(documentId) {
 
-    background: white;
+    return signatoryList.map(person => {
 
-    padding: 28px;
+        return {
 
-    border-radius: 15px;
+            document_id: documentId,
 
-    box-shadow:
-        0 3px 10px
-        rgba(0, 0, 0, 0.08);
+            signatory_name:
+                person.name.trim(),
 
+            signed_at:
+                person.signed
+                    ? (
+                        person.signedAt
+                            ? new Date(
+                                person.signedAt
+                            ).toISOString()
+                            : new Date().toISOString()
+                    )
+                    : null,
+
+            received_by:
+                person.receivedBy.trim() || null,
+
+            received_at:
+                person.receivedAt
+                    ? new Date(
+                        person.receivedAt
+                    ).toISOString()
+                    : null
+        };
+
+    });
 }
 
 
-.monitor-header {
+// ============================================================
+// LOAD DOCUMENTS
+// ============================================================
 
-    display: flex;
+async function loadDocuments() {
 
-    justify-content:
-        space-between;
+    try {
 
-    align-items: center;
+        const { data, error } =
+            await supabaseClient
+                .from("documents")
+                .select(`
+                    *,
+                    signatories (*)
+                `)
+                .order("document_date", {
+                    ascending: false
+                });
 
-    margin-bottom: 20px;
 
+        if (error) {
+
+            throw new Error(
+                "Could not load documents: " +
+                error.message
+            );
+        }
+
+
+        documents = data || [];
+
+        renderDocuments();
+
+        updateStatistics();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
 }
 
 
-.monitor-header h2 {
+// ============================================================
+// STATUS
+// ============================================================
 
-    margin: 0;
+function getStatus(document) {
 
-    font-size: 30px;
+    const signatories =
+        document.signatories || [];
 
+
+    if (signatories.length === 0) {
+
+        return "PENDING";
+    }
+
+
+    const signed =
+        signatories.filter(
+            person => !!person.signed_at
+        ).length;
+
+
+    if (signed === signatories.length) {
+
+        return "COMPLETED";
+    }
+
+
+    if (signed > 0) {
+
+        return "FOR SIGNATURE";
+    }
+
+
+    return "PENDING";
 }
 
 
-/* ============================================
-   BUTTONS
-============================================ */
+// ============================================================
+// RENDER DOCUMENTS
+// ============================================================
 
-button {
+function renderDocuments() {
 
-    border: none;
+    const table =
+        document.getElementById("documentTable");
 
-    cursor: pointer;
+    const search =
+        document.getElementById("searchInput")
+            .value
+            .toLowerCase();
 
-    font-size: 15px;
+    const filter =
+        document.getElementById("statusFilter")
+            .value;
 
-    font-family: inherit;
 
+    table.innerHTML = "";
+
+
+    const filtered =
+        documents.filter(doc => {
+
+            const name =
+                (doc.document_name || "")
+                    .toLowerCase();
+
+            const status =
+                getStatus(doc);
+
+            return (
+                name.includes(search) &&
+                (
+                    filter === "ALL" ||
+                    status === filter
+                )
+            );
+        });
+
+
+    if (filtered.length === 0) {
+
+        table.innerHTML = `
+
+            <tr>
+
+                <td
+                    colspan="9"
+                    style="text-align:center;padding:30px"
+                >
+
+                    No documents found.
+
+                </td>
+
+            </tr>
+        `;
+
+        return;
+    }
+
+
+    filtered.forEach(doc => {
+
+        const row =
+            document.createElement("tr");
+
+
+        const status =
+            getStatus(doc);
+
+
+        const signatories =
+            doc.signatories || [];
+
+
+        let statusClass = "pending";
+
+        if (status === "COMPLETED") {
+
+            statusClass = "completed";
+
+        } else if (status === "FOR SIGNATURE") {
+
+            statusClass = "signature";
+        }
+
+
+        const signatoryHTML =
+            signatories.map(person => {
+
+                return `
+
+                    <div class="table-person">
+
+                        <strong>
+                            ${escapeHTML(
+                                person.signatory_name
+                            )}
+                        </strong>
+
+                        <br>
+
+                        ${
+                            person.signed_at
+
+                            ? `
+                                <span class="status completed">
+                                    SIGNED
+                                </span>
+
+                                <br>
+
+                                <small>
+                                    ${formatDateTime(
+                                        person.signed_at
+                                    )}
+                                </small>
+                            `
+
+                            : `
+                                <span class="status pending">
+                                    NOT SIGNED
+                                </span>
+                            `
+                        }
+
+                    </div>
+
+                    <hr>
+                `;
+
+            }).join("");
+
+
+        const receivedHTML =
+            signatories.map(person => {
+
+                return `
+
+                    <div>
+
+                        ${
+                            person.received_by
+                                ? escapeHTML(
+                                    person.received_by
+                                )
+                                : "-"
+                        }
+
+                        ${
+                            person.received_at
+                                ? `
+                                    <br>
+                                    <small>
+                                        ${formatDateTime(
+                                            person.received_at
+                                        )}
+                                    </small>
+                                `
+                                : ""
+                        }
+
+                    </div>
+
+                    <hr>
+                `;
+
+            }).join("");
+
+
+        row.innerHTML = `
+
+            <td>
+                ${formatDate(doc.document_date)}
+            </td>
+
+            <td>
+                <strong>
+                    ${escapeHTML(doc.document_name)}
+                </strong>
+            </td>
+
+            <td>
+                ${escapeHTML(doc.school_year || "-")}
+            </td>
+
+            <td>
+                ${escapeHTML(doc.semester || "-")}
+            </td>
+
+            <td>
+                ${escapeHTML(doc.trusted_by || "-")}
+            </td>
+
+            <td>
+                ${signatoryHTML}
+            </td>
+
+            <td>
+                ${receivedHTML}
+            </td>
+
+            <td>
+
+                <span class="status ${statusClass}">
+                    ${status}
+                </span>
+
+            </td>
+
+            <td>
+
+                <button
+                    class="edit-btn"
+                    onclick="editDocument(${doc.id})"
+                >
+                    Edit
+                </button>
+
+                <button
+                    class="delete-btn"
+                    onclick="deleteDocument(${doc.id})"
+                >
+                    Delete
+                </button>
+
+            </td>
+        `;
+
+
+        table.appendChild(row);
+
+    });
 }
 
 
-.add-btn {
+// ============================================================
+// EDIT
+// ============================================================
 
-    background: #2877e8;
+function editDocument(id) {
 
-    color: white;
+    const doc =
+        documents.find(item => item.id === id);
 
-    padding:
-        14px 22px;
 
-    border-radius: 8px;
+    if (!doc) {
 
-}
+        alert("Document not found.");
 
+        return;
+    }
 
-.add-btn:hover {
 
-    background: #1765d0;
+    editingDocumentId = id;
 
-}
 
+    document.getElementById("modalTitle")
+        .textContent = "Edit Document";
 
-.secondary-btn {
 
-    background: #eeeeee;
+    document.getElementById("saveButton")
+        .textContent = "Update Document";
 
-    color: #172b3a;
 
-    padding:
-        12px 18px;
+    document.getElementById("documentDate")
+        .value = doc.document_date || "";
 
-    border-radius: 8px;
 
-}
+    document.getElementById("documentName")
+        .value = doc.document_name || "";
 
 
-.secondary-btn:hover {
+    document.getElementById("schoolYear")
+        .value = doc.school_year || "";
 
-    background: #dddddd;
 
-}
+    document.getElementById("semester")
+        .value = doc.semester || "";
 
 
-.save-btn {
+    document.getElementById("trustedBy")
+        .value = doc.trusted_by || "";
 
-    background: #2877e8;
 
-    color: white;
+    signatoryList =
+        (doc.signatories || []).map(person => {
 
-    padding:
-        14px 25px;
+            return {
 
-    border-radius: 8px;
+                name:
+                    person.signatory_name || "",
 
-}
+                signed:
+                    !!person.signed_at,
 
+                signedAt:
+                    person.signed_at || "",
 
-.save-btn:hover {
+                receivedBy:
+                    person.received_by || "",
 
-    background: #1765d0;
+                receivedAt:
+                    person.received_at || ""
 
-}
+            };
 
+        });
 
-.cancel-btn {
 
-    background: #eeeeee;
+    if (signatoryList.length === 0) {
 
-    color: #222;
+        resetSignatories();
 
-    padding:
-        14px 25px;
+    } else {
 
-    border-radius: 8px;
-
-}
-
-
-.cancel-btn:hover {
-
-    background: #dddddd;
-
-}
-
-
-.edit-btn {
-
-    background: #2877e8;
-
-    color: white;
-
-    padding:
-        9px 14px;
-
-    border-radius: 7px;
-
-    margin-bottom: 5px;
-
-}
-
-
-.delete-btn {
-
-    background: #ffe0e0;
-
-    color: #c00000;
-
-    padding:
-        9px 14px;
-
-    border-radius: 7px;
-
-}
-
-
-/* ============================================
-   FILTERS
-============================================ */
-
-.filters {
-
-    display: grid;
-
-    grid-template-columns:
-        1fr 2fr;
-
-    gap: 15px;
-
-    margin-bottom: 20px;
-
-}
-
-
-input,
-select {
-
-    width: 100%;
-
-    padding: 13px;
-
-    border:
-        1px solid #cccccc;
-
-    border-radius: 8px;
-
-    font-size: 16px;
-
-    background: white;
-
-}
-
-
-input:focus,
-select:focus {
-
-    outline: none;
-
-    border-color: #2877e8;
-
-}
-
-
-/* ============================================
-   TABLE
-============================================ */
-
-.table-container {
-
-    width: 100%;
-
-    overflow-x: auto;
-
-}
-
-
-table {
-
-    width: 100%;
-
-    border-collapse: collapse;
-
-}
-
-
-thead th {
-
-    background: #ffbd00;
-
-    color: #111;
-
-    padding: 14px;
-
-    text-align: left;
-
-    white-space: nowrap;
-
-}
-
-
-tbody td {
-
-    padding: 14px;
-
-    border-bottom:
-        1px solid #dddddd;
-
-    vertical-align: top;
-
-}
-
-
-tbody tr:hover {
-
-    background: #fafafa;
-
-}
-
-
-/* ============================================
-   STATUS
-============================================ */
-
-.status {
-
-    display: inline-block;
-
-    padding:
-        7px 11px;
-
-    border-radius: 20px;
-
-    font-weight: bold;
-
-    font-size: 12px;
-
-    white-space: nowrap;
-
-}
-
-
-.status.completed {
-
-    background: #d9f5e2;
-
-    color: #168144;
-
-}
-
-
-.status.pending {
-
-    background: #fff1c7;
-
-    color: #9a6b00;
-
-}
-
-
-.status.signature {
-
-    background: #dceaff;
-
-    color: #145bc1;
-
-}
-
-
-/* ============================================
-   SIGNATORY ROW
-============================================ */
-
-.signatory {
-
-    display: grid;
-
-    grid-template-columns:
-        35px
-        1.3fr
-        1.2fr
-        1fr
-        1.2fr
-        90px
-        40px;
-
-    gap: 8px;
-
-    align-items: center;
-
-    margin-top: 12px;
-
-    padding: 8px 0;
-
-}
-
-
-.signatory-number {
-
-    font-weight: bold;
-
-    text-align: center;
-
-}
-
-
-/* ============================================
-   SIGNED CHECKBOX
-============================================ */
-
-.signed-box {
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    gap: 6px;
-
-    font-size: 14px;
-
-    font-weight: bold;
-
-    cursor: pointer;
-
-    white-space: nowrap;
-
-}
-
-
-.signed-box input {
-
-    width: 20px;
-
-    height: 20px;
-
-    cursor: pointer;
-
-}
-
-
-/* ============================================
-   REMOVE SIGNATORY
-============================================ */
-
-.remove-signatory {
-
-    background: #ffe0e0;
-
-    color: #c00000;
-
-    width: 40px;
-
-    height: 40px;
-
-    border-radius: 7px;
-
-    font-size: 20px;
-
-}
-
-
-/* ============================================
-   MODAL
-============================================ */
-
-.modal {
-
-    position: fixed;
-
-    inset: 0;
-
-    background:
-        rgba(0, 0, 0, 0.45);
-
-    display: none;
-
-    align-items: center;
-
-    justify-content: center;
-
-    padding: 30px;
-
-    z-index: 1000;
-
-}
-
-
-.modal.show {
-
-    display: flex;
-
-}
-
-
-.modal-box {
-
-    background: white;
-
-    width: 100%;
-
-    max-width: 1250px;
-
-    max-height: 95vh;
-
-    overflow-y: auto;
-
-    border-radius: 12px;
-
-    padding: 30px;
-
-    position: relative;
-
-}
-
-
-.modal-box h2 {
-
-    margin-top: 0;
-
-    font-size: 28px;
-
-}
-
-
-/* ============================================
-   CLOSE
-============================================ */
-
-.close {
-
-    position: absolute;
-
-    right: 25px;
-
-    top: 15px;
-
-    background: transparent;
-
-    font-size: 32px;
-
-    color: #111;
-
-}
-
-
-/* ============================================
-   FORM
-============================================ */
-
-.form-grid {
-
-    display: grid;
-
-    grid-template-columns:
-        1fr 1fr;
-
-    gap: 20px;
-
-}
-
-
-label {
-
-    display: block;
-
-    font-weight: bold;
-
-    margin-bottom: 8px;
-
-}
-
-
-hr {
-
-    margin:
-        30px 0;
-
-    border: none;
-
-    border-top:
-        1px solid #dddddd;
-
-}
-
-
-/* ============================================
-   SIGNATURE TITLE
-============================================ */
-
-.signature-title {
-
-    display: flex;
-
-    justify-content:
-        space-between;
-
-    align-items: center;
-
-}
-
-
-.signature-title h3 {
-
-    margin:
-        0 0 5px 0;
-
-    font-size: 22px;
-
-}
-
-
-.signature-title p {
-
-    margin: 0;
-
-    color: #777;
-
-}
-
-
-/* ============================================
-   MODAL BUTTONS
-============================================ */
-
-.modal-buttons {
-
-    display: flex;
-
-    justify-content:
-        flex-end;
-
-    gap: 10px;
-
-    margin-top: 30px;
-
-}
-
-
-/* ============================================
-   TABLE PERSON
-============================================ */
-
-.table-person {
-
-    margin-bottom: 8px;
-
-}
-
-
-.table-person hr {
-
-    margin:
-        10px 0;
-
-    border-top:
-        1px solid #eeeeee;
-
-}
-
-
-.table-person small {
-
-    color: #777;
-
-}
-
-
-/* ============================================
-   RESPONSIVE
-============================================ */
-
-@media (max-width: 1100px) {
-
-    .stats {
-
-        grid-template-columns:
-            repeat(2, 1fr);
+        renderSignatories();
 
     }
 
 
-    .signatory {
-
-        grid-template-columns:
-            35px
-            1fr
-            1fr;
-
-    }
-
+    document.getElementById("modal")
+        .classList.add("show");
 }
 
 
-@media (max-width: 700px) {
+// ============================================================
+// DELETE
+// ============================================================
 
-    header {
+async function deleteDocument(id) {
 
-        padding: 25px;
+    if (!confirm("Delete this document?")) {
 
+        return;
     }
 
 
-    header h1 {
+    const { error } =
+        await supabaseClient
+            .from("documents")
+            .delete()
+            .eq("id", id);
 
-        font-size: 24px;
 
+    if (error) {
+
+        alert(
+            "Delete failed:\n\n" +
+            error.message
+        );
+
+        return;
     }
 
 
-    main {
+    await loadDocuments();
 
-        padding: 20px;
+    alert("Document deleted.");
+}
 
+
+// ============================================================
+// CLEAR
+// ============================================================
+
+function clearForm() {
+
+    document.getElementById("documentDate").value = "";
+
+    document.getElementById("documentName").value = "";
+
+    document.getElementById("schoolYear").value = "";
+
+    document.getElementById("semester").value = "";
+
+    document.getElementById("trustedBy").value = "";
+
+    resetSignatories();
+}
+
+
+// ============================================================
+// STATISTICS
+// ============================================================
+
+function updateStatistics() {
+
+    let pending = 0;
+    let signature = 0;
+    let completed = 0;
+
+
+    documents.forEach(doc => {
+
+        const status = getStatus(doc);
+
+        if (status === "PENDING") {
+
+            pending++;
+
+        } else if (status === "FOR SIGNATURE") {
+
+            signature++;
+
+        } else {
+
+            completed++;
+        }
+
+    });
+
+
+    document.getElementById("totalCount")
+        .textContent = documents.length;
+
+    document.getElementById("pendingCount")
+        .textContent = pending;
+
+    document.getElementById("signatureCount")
+        .textContent = signature;
+
+    document.getElementById("completedCount")
+        .textContent = completed;
+}
+
+
+// ============================================================
+// DATE
+// ============================================================
+
+function formatDate(value) {
+
+    if (!value) return "-";
+
+    const date =
+        new Date(value + "T00:00:00");
+
+    return date.toLocaleDateString("en-GB");
+}
+
+
+// ============================================================
+// DATE + TIME
+// ============================================================
+
+function formatDateTime(value) {
+
+    if (!value) return "-";
+
+    const date = new Date(value);
+
+    return date.toLocaleString("en-GB");
+}
+
+
+// ============================================================
+// DATETIME LOCAL
+// ============================================================
+
+function toDateTimeLocal(value) {
+
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    if (isNaN(date.getTime())) return "";
+
+
+    const pad = n =>
+        String(n).padStart(2, "0");
+
+
+    return (
+        date.getFullYear() +
+        "-" +
+        pad(date.getMonth() + 1) +
+        "-" +
+        pad(date.getDate()) +
+        "T" +
+        pad(date.getHours()) +
+        ":" +
+        pad(date.getMinutes())
+    );
+}
+
+
+// ============================================================
+// ESCAPE
+// ============================================================
+
+function escapeHTML(value) {
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+
+        return "";
     }
 
 
-    .stats {
-
-        grid-template-columns:
-            1fr;
-
-    }
-
-
-    .monitor-header {
-
-        flex-direction: column;
-
-        align-items: flex-start;
-
-        gap: 15px;
-
-    }
-
-
-    .filters {
-
-        grid-template-columns:
-            1fr;
-
-    }
-
-
-    .form-grid {
-
-        grid-template-columns:
-            1fr;
-
-    }
-
-
-    .signature-title {
-
-        flex-direction: column;
-
-        align-items: flex-start;
-
-        gap: 15px;
-
-    }
-
-
-    .signatory {
-
-        grid-template-columns:
-            1fr;
-
-        border:
-            1px solid #dddddd;
-
-        padding: 15px;
-
-        border-radius: 8px;
-
-    }
-
-
-    .modal {
-
-        padding: 10px;
-
-    }
-
-
-    .modal-box {
-
-        padding: 20px;
-
-    }
-
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }

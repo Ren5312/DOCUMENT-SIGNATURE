@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Signature Monitoring</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header><h1>DOCUMENT'S FOR SIGNATURE</h1></header>
+
+<main>
+<section class="stats">
+<div class="card"><span>Total</span><strong id="totalCount">0</strong></div>
+<div class="card"><span>Pending</span><strong id="pendingCount">0</strong></div>
+<div class="card"><span>For Signature</span><strong id="signatureCount">0</strong></div>
+<div class="card"><span>Completed</span><strong id="completedCount">0</strong></div>
+</section>
+
+<section class="panel">
+<div class="topbar">
+<h2>Document Monitoring</h2>
+<button onclick="openAddModal()" class="primary">+ Add Document</button>
+</div>
+
+<div class="filters">
+<input id="searchInput" placeholder="Search document..." oninput="renderDocuments()">
+<select id="statusFilter" onchange="renderDocuments()">
+<option value="ALL">All Status</option>
+<option value="PENDING">Pending</option>
+<option value="FOR SIGNATURE">For Signature</option>
+<option value="COMPLETED">Completed</option>
+</select>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>Date</th><th>Document Name</th><th>School Year</th><th>Semester</th>
+<th>Trusted By</th><th>Signatories</th><th>Received By</th><th>Status</th><th>Action</th>
+</tr></thead>
+<tbody id="documentTable"></tbody>
+</table>
+</div>
+</section>
+</main>
+
+<div id="modal" class="modal">
+<div class="modal-box">
+<button class="close" onclick="closeModal()">×</button>
+<h2 id="modalTitle">Add Document</h2>
+
+<div class="form-grid">
+<div><label>Date</label><input id="documentDate" type="date"></div>
+<div><label>Document Name</label><input id="documentName"></div>
+<div><label>School Year</label><input id="schoolYear" placeholder="2026-2027"></div>
+<div><label>Semester</label>
+<select id="semester">
+<option value="">Select Semester</option>
+<option>1st Semester</option>
+<option>2nd Semester</option>
+<option>Summer</option>
+</select></div>
+<div><label>Trusted By</label><input id="trustedBy"></div>
+</div>
+
+<hr>
+<div class="signature-head">
+<div><h3>Signatories</h3><p>Add each person separately.</p></div>
+<button onclick="addSignatory()" class="secondary">+ Add Signatory</button>
+</div>
+
+<div id="signatoryContainer"></div>
+
+<div class="buttons">
+<button onclick="closeModal()" class="secondary">Cancel</button>
+<button id="saveButton" onclick="saveDocument()" class="primary">Save Document</button>
+</div>
+</div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

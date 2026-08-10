@@ -1,0 +1,15 @@
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f6f9;color:#172b3a}
+header{background:#fff;padding:28px 5%;border-bottom:1px solid #ddd}header h1{margin:0}
+main{padding:30px 4%}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:25px}
+.card,.panel{background:#fff;border-radius:12px;box-shadow:0 3px 12px #0001}.card{padding:22px}.card span{color:#666}.card strong{display:block;font-size:38px;margin-top:8px}
+.panel{padding:25px}.topbar,.signature-head,.buttons{display:flex;justify-content:space-between;align-items:center;gap:12px}.topbar h2{margin:0}
+.filters{display:flex;gap:12px;margin:20px 0}.filters input{flex:1}
+input,select{width:100%;padding:11px;border:1px solid #ccc;border-radius:7px;font-size:15px}
+button{border:0;border-radius:7px;padding:11px 16px;cursor:pointer}.primary{background:#2877e8;color:#fff}.secondary{background:#eee;color:#222}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1100px}th{background:#ffbd00;padding:12px;text-align:left}td{padding:12px;border-bottom:1px solid #ddd;vertical-align:top}
+.status{display:inline-block;border-radius:20px;padding:5px 9px;font-size:12px;font-weight:bold}.completed{background:#d9f5e2;color:#168144}.pending{background:#fff1c7;color:#916500}.signature{background:#dceaff;color:#145bc1}
+.edit{background:#2877e8;color:#fff;margin-bottom:5px}.delete{background:#ffe0e0;color:#b00000}
+.modal{display:none;position:fixed;inset:0;background:#0008;align-items:center;justify-content:center;padding:15px}.modal.show{display:flex}.modal-box{background:#fff;width:100%;max-width:1100px;max-height:95vh;overflow:auto;padding:28px;border-radius:12px;position:relative}.close{position:absolute;right:15px;top:10px;background:none;font-size:30px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}label{display:block;font-weight:bold;margin-bottom:6px}.signatory{display:grid;grid-template-columns:35px 1.3fr 1fr 1.1fr 1fr 90px 40px;gap:8px;align-items:center;margin:10px 0}.number{text-align:center;font-weight:bold}.signed{display:flex;align-items:center;gap:5px;font-weight:bold}.signed input{width:18px;height:18px}.remove{background:#ffe0e0;color:#b00000;font-size:20px}
+.buttons{justify-content:flex-end;margin-top:25px}.signature-head{margin-bottom:12px}.signature-head h3{margin:0}.signature-head p{margin:4px 0;color:#777}
+@media(max-width:800px){.stats{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.signatory{grid-template-columns:1fr;border:1px solid #ddd;padding:12px}.filters{flex-direction:column}}
